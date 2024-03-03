@@ -113,6 +113,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         )
         # return {"message":"ERROR"}
 
+    crud.update_user_status(db,db_user,True) #Danger
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = crypt.create_access_token(data={"sub": db_user.email}, expires_delta=access_token_expires)
     return {"access_token": access_token}
@@ -143,3 +144,13 @@ async def refresh_token(token: schemas.Token, db: Session = Depends(get_db)):
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     new_access_token = crypt.create_access_token(data={"sub": db_user.email}, expires_delta=access_token_expires)
     return {"access_token": new_access_token}
+
+
+@app.get("/logout",response_model=schemas.UserStatus)
+async def logout(token: schemas.Token,db: Session = Depends(get_db)):
+    email = crypt.get_current_user_email(token.access_token)
+    db_user = crud.get_user_by_email(db, email=email)
+    if db_user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    crud.update_user_status(db,db_user,False)
+    return {"email":db_user.email,"status":"ok"}

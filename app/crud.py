@@ -36,3 +36,11 @@ def update_user(db: Session, compare_email:str, new_first_name: str, new_last_na
     db.commit()
     db.refresh(currentUser)
     return currentUser
+
+def update_user_status(db: Session,user:models.User,status:bool):
+    #currentUser = db.query(user).first()
+    user.is_active = status
+    db.commit()
+    db.refresh(user)
+    return user
+

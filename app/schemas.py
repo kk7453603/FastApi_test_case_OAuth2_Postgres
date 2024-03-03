@@ -1,12 +1,16 @@
 from pydantic import BaseModel
 
 
+class Token(BaseModel):
+    access_token: str
+#    token_type: str
+
+
 class UserBase(BaseModel):
     email: str
 
 
 class UserCreate(UserBase):
-    email: str
     password: str
 
 class User(UserBase):
@@ -15,7 +19,8 @@ class User(UserBase):
     first_name: str
     last_name: str
     email : str
-    
+    is_active: bool
+
     class Config:
         orm_mode = True
 

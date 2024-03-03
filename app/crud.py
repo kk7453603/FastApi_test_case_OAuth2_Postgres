@@ -4,6 +4,9 @@ import models, schemas
 from os import urandom
 from hashlib import pbkdf2_hmac
 
+#from passlib.context import CryptContext
+#pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 def get_user(db: Session, id: int):
     return db.query(models.User).filter(models.User.id == id).first()
@@ -20,16 +23,16 @@ def create_user(db: Session, user: schemas.UserCreate):
     encsalt=base64.b64encode(salt)
     enckey=base64.b64encode(key)
 
-    db_user = models.User(login=user.email,email=user.email,first_name="-",last_name="-",passwd=enckey.decode('utf-8'),salt=encsalt.decode('utf-8'))
+    db_user = models.User(email=user.email,first_name="-",last_name="-",passwd=enckey.decode('utf-8'),salt=encsalt.decode('utf-8'))
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
 
-def update_user(db: Session, change_id:int, new_first_name: str, new_last_name: str):
-    currentUser = db.query(models.User).filter_by(id = change_id).first()
+def update_user(db: Session, compare_email:str, new_first_name: str, new_last_name: str):
+    currentUser = db.query(models.User).filter(models.User.email==compare_email).first()
     currentUser.first_name = new_first_name
     currentUser.last_name = new_last_name
     db.commit()
-    db.refresh()
+    db.refresh(currentUser)
     return currentUser

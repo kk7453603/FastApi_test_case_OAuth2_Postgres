@@ -1,12 +1,15 @@
 import base64
 from sqlalchemy.orm import Session
-from . import models, schemas
+import models, schemas
 from os import urandom
 from hashlib import pbkdf2_hmac
 
 
 def get_user(db: Session, id: int):
     return db.query(models.User).filter(models.User.id == id).first()
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == email).first()
 
 def get_all_users(db: Session):
     return db.query(models.User).all()
@@ -17,7 +20,7 @@ def create_user(db: Session, user: schemas.UserCreate):
     encsalt=base64.b64encode(salt)
     enckey=base64.b64encode(key)
 
-    db_user = models.User(email=user.email, hashed_password=enckey.decode('utf-8'),salt=encsalt.decode('utf-8'))
+    db_user = models.User(login=user.email,email=user.email,first_name="-",last_name="-",passwd=enckey.decode('utf-8'),salt=encsalt.decode('utf-8'))
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

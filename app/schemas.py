@@ -6,6 +6,7 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
+    email: str
     password: str
 
 class User(UserBase):
@@ -17,3 +18,11 @@ class User(UserBase):
     
     class Config:
         orm_mode = True
+
+class UserStatus(UserBase):
+    status:str
+
+
+class UserGetInfo(UserBase):
+    first_name: str
+    last_name: str

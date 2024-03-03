@@ -20,16 +20,16 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "first_name": "John",
-        "last_name": "Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-    }
-}
+#fake_users_db = {
+#    "johndoe": {
+#        "username": "johndoe",
+#        "first_name": "John",
+#        "last_name": "Doe",
+#        "email": "johndoe@example.com",
+#        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+#        "disabled": False,
+#    }
+#}
 
 
 class Token(BaseModel):
@@ -53,6 +53,7 @@ class User(BaseModel):
 class UserInDB(User):
     hashed_password: str
 
+models.Base.metadata.create_all(bind=engine)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -106,19 +107,19 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def get_user(email: str):
-    db = SessionLocal()
+def get_user(email: str, db: Session):
+    #db = SessionLocal()
     user=crud.get_user_by_email(db,email)
     if user:    
-        return UserInDB(user.passwd)
+        return user
 
 
-def authenticate_user(email: str, password: str):
-    user = get_user(email=email)
+def authenticate_user(email: str, password: str,db:Session):
+    user = get_user(email=email,db=db)
     #user = crud.get_user()
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    if not verify_password(password, get_password_hash(user.passwd)):
         return False
     return user
 
@@ -134,7 +135,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+def get_current_user(token: Annotated[str, Depends(oauth2_scheme)],db: Session = Depends(get_db)):  #-----------------------------
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -148,7 +149,7 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = get_user(fake_users_db, username=token_data.username)
+    user = get_user(email=token_data.username, db=db) #-------------------------
     if user is None:
         raise credentials_exception
     return user
@@ -161,8 +162,8 @@ async def get_current_active_user(current_user: Annotated[User, Depends(get_curr
 
 
 @app.post("/token")
-async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
-    user = authenticate_user(form_data.username, form_data.password)
+async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],db: Session = Depends(get_db)) -> Token:
+    user = authenticate_user(form_data.username, form_data.password,db)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -171,7 +172,7 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={"sub": user.login}, expires_delta=access_token_expires
     )
     return Token(access_token=access_token, token_type="bearer")
 

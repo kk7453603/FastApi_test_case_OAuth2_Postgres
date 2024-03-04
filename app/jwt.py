@@ -2,15 +2,13 @@ import hmac
 import hashlib
 import base64
 import json
-import time
+
 
 
 def getSignature(base64Header,base64Payload,secret):
-    # print
 
     block = base64Header.decode('utf-8') + "." + base64Payload.decode('utf-8')
     digest = hmac.new(bytes(secret,'utf-8'),block.encode('utf-8'), digestmod = hashlib.sha256).digest()
-    # Digest sometimes returns non alphanumeric characters
     signature = base64.urlsafe_b64encode(digest)
     return signature.decode('utf-8')[: -1]
 
@@ -26,7 +24,6 @@ def encodeJWT(data,key,algorithm):
   "typ": "JWT"
   }
   base64Header = base64.b64encode(json.dumps(header).encode("utf-8"))
-  # Dumping header and payload dictionaries to string then encoding in bytes and then finally encoding in base64 bytes
   base64Payload = base64.b64encode(json.dumps(payload).encode("utf-8"))
   sig = getSignature(base64Header,base64Payload,key)
   encodedJWT = base64Header.decode("utf-8")+"."+base64Payload.decode("utf-8")+"."+sig

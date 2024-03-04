@@ -18,47 +18,15 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
-#fake_users_db = {
-#    "johndoe": {
-#        "username": "johndoe",
-#        "first_name": "John",
-#        "last_name": "Doe",
-#        "email": "johndoe@example.com",
-#        "passwd": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-#        "disabled": False,
-#    }
-#}
-
-
-#class Token(BaseModel):
-#    access_token: str
-#    token_type: str
-
-
-#class TokenData(BaseModel):
-#    username: str | None = None
-
-
-#class User(BaseModel):
-#    username: str
-#    email: str | None = None
-#    first_name: str | None = None
-#    last_name: str | None = None
-    #full_name: str | None = None
-#    disabled: bool | None = None
-
-
-#class UserInDB(User):
-#    passwd: str
 
 models.Base.metadata.create_all(bind=engine)
 
-#pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 app = FastAPI()
-#router = APIRouter()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -79,7 +47,6 @@ def get_db():
 
 @app.post("/sign-up", response_model=schemas.UserStatus)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    #print(user.email)
     regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     db_user = crud.get_user_by_email(db, email=user.email)
     if (re.fullmatch(regex, user.email)==None):
@@ -99,8 +66,6 @@ def read_users(db: Session = Depends(get_db)):
 
 @app.post("/login", response_model=schemas.Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # user = authenticate_user(fake_users_db, form_data.username, form_data.password)
-    # print(form_data.username)
     db_user = crud.get_user_by_email(db, email=form_data.username)
     if db_user==None or not (crypt.verify_hash(form_data.password,db_user.salt).decode('utf-8') == db_user.passwd):
         raise HTTPException(
@@ -108,9 +73,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-        # return {"message":"ERROR"}
-
-    crud.update_user_status(db,db_user,True) #Danger
+    crud.update_user_status(db,db_user,True) 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = crypt.create_access_token(data={"sub": db_user.email}, expires_delta=access_token_expires)
     return {"access_token": access_token}
@@ -119,20 +82,30 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.get("/user/me/", response_model=schemas.UserGetInfo)
 async def get_current_user(token: schemas.Token,db: Session = Depends(get_db)):    
+    if len(token.access_token)!=32:
+        raise HTTPException(status_code=401,detail="Incorrect JWT token",headers={"WWW-Authenticate": "Bearer"})
     email=crypt.get_current_user_email(token.access_token)
     db_user = crud.get_user_by_email(db, email=email)
+    if db_user is None:
+        raise HTTPException(status_code=401, detail="User not found")
     return db_user
 
 @app.post("/user/me/",response_model=schemas.UserStatus)
 async def change_current_user(new_first_name:str,new_last_name:str,token: schemas.Token,db: Session = Depends(get_db)):
+    if len(token.access_token)!=32:
+        raise HTTPException(status_code=401,detail="Incorrect JWT token",headers={"WWW-Authenticate": "Bearer"})
     email=crypt.get_current_user_email(token.access_token)
-    #current_user = crud.get_user_by_email(db, email=email)
+    db_user = crud.get_user_by_email(db, email=email)
+    if db_user is None:
+        raise HTTPException(status_code=401, detail="User not found")
     result=crud.update_user(db,email,new_first_name,new_last_name)
     return {"email":result.email,"status":"ok"}
 
 
 @app.post("/refresh", response_model=schemas.Token)
-async def refresh_token(token: schemas.Token, db: Session = Depends(get_db)):    
+async def refresh_token(token: schemas.Token, db: Session = Depends(get_db)):
+    if len(token.access_token)!=32:
+        raise HTTPException(status_code=401,detail="Incorrect JWT token",headers={"WWW-Authenticate": "Bearer"})
     email = crypt.get_current_user_email(token.access_token)
     db_user = crud.get_user_by_email(db, email=email)
     if db_user is None:
@@ -145,6 +118,8 @@ async def refresh_token(token: schemas.Token, db: Session = Depends(get_db)):
 
 @app.get("/logout",response_model=schemas.UserStatus)
 async def logout(token: schemas.Token,db: Session = Depends(get_db)):
+    if len(token.access_token)!=32:
+        raise HTTPException(status_code=401,detail="Incorrect JWT token",headers={"WWW-Authenticate": "Bearer"})
     email = crypt.get_current_user_email(token.access_token)
     db_user = crud.get_user_by_email(db, email=email)
     if db_user is None:

@@ -6,16 +6,15 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 import models,crud,schemas,crypt
 
 from postgres import SessionLocal,engine
-
+from config import settings
 # to get a string like this run:
 # openssl rand -hex 32
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+#SECRET_KEY = settings.SECRET_KEY
+#ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = float(settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
 
 
@@ -82,18 +81,14 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.get("/user/me/", response_model=schemas.UserGetInfo)
 async def get_current_user(token: schemas.Token,db: Session = Depends(get_db)):    
-    if len(token.access_token)!=32:
-        raise HTTPException(status_code=401,detail="Incorrect JWT token",headers={"WWW-Authenticate": "Bearer"})
     email=crypt.get_current_user_email(token.access_token)
     db_user = crud.get_user_by_email(db, email=email)
     if db_user is None:
         raise HTTPException(status_code=401, detail="User not found")
-    return db_user
+    return {"email":db_user.email,"first_name":db_user.first_name,"last_name":db_user.last_name}
 
 @app.post("/user/me/",response_model=schemas.UserStatus)
 async def change_current_user(new_first_name:str,new_last_name:str,token: schemas.Token,db: Session = Depends(get_db)):
-    if len(token.access_token)!=32:
-        raise HTTPException(status_code=401,detail="Incorrect JWT token",headers={"WWW-Authenticate": "Bearer"})
     email=crypt.get_current_user_email(token.access_token)
     db_user = crud.get_user_by_email(db, email=email)
     if db_user is None:
@@ -104,8 +99,6 @@ async def change_current_user(new_first_name:str,new_last_name:str,token: schema
 
 @app.post("/refresh", response_model=schemas.Token)
 async def refresh_token(token: schemas.Token, db: Session = Depends(get_db)):
-    if len(token.access_token)!=32:
-        raise HTTPException(status_code=401,detail="Incorrect JWT token",headers={"WWW-Authenticate": "Bearer"})
     email = crypt.get_current_user_email(token.access_token)
     db_user = crud.get_user_by_email(db, email=email)
     if db_user is None:
@@ -118,8 +111,6 @@ async def refresh_token(token: schemas.Token, db: Session = Depends(get_db)):
 
 @app.get("/logout",response_model=schemas.UserStatus)
 async def logout(token: schemas.Token,db: Session = Depends(get_db)):
-    if len(token.access_token)!=32:
-        raise HTTPException(status_code=401,detail="Incorrect JWT token",headers={"WWW-Authenticate": "Bearer"})
     email = crypt.get_current_user_email(token.access_token)
     db_user = crud.get_user_by_email(db, email=email)
     if db_user is None:

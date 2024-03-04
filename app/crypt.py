@@ -3,16 +3,16 @@ import base64
 from datetime import datetime, timedelta
 from typing import Optional
 import json
-import crud
 from jwt import decodeJWT,encodeJWT
-SECRET_KEY = ""
+from config import settings
+
+SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 
 
 
 
 def verify_hash(password,savedSalt):
-    # Salt is in utf-8 string I need to encode it in Base64 and then decode the Base64 to bytes
     savedSalt = savedSalt.encode('utf-8')
     savedSalt = base64.b64decode(savedSalt)
     key = hashlib.pbkdf2_hmac(

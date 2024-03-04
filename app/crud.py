@@ -4,8 +4,6 @@ import models, schemas
 from os import urandom
 from hashlib import pbkdf2_hmac
 
-#from passlib.context import CryptContext
-#pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def get_user(db: Session, id: int):
@@ -38,7 +36,6 @@ def update_user(db: Session, compare_email:str, new_first_name: str, new_last_na
     return currentUser
 
 def update_user_status(db: Session,user:models.User,status:bool):
-    #currentUser = db.query(user).first()
     user.is_active = status
     db.commit()
     db.refresh(user)

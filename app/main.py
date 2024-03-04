@@ -10,7 +10,6 @@ import models,crud,schemas,crypt
 
 from postgres import SessionLocal,engine
 from config import settings
-# to get a string like this run:
 # openssl rand -hex 32
 #SECRET_KEY = settings.SECRET_KEY
 #ALGORITHM = settings.ALGORITHM
